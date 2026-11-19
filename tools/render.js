@@ -13,7 +13,7 @@ const durl = p => 'data:image/' + (p.endsWith('.png') ? 'png' : 'webp') + ';base
 async function renderCard(page, c) {
   const f = c.face || (faces[c.name] && faces[c.name].score > .75 ? faces[c.name] : { cx: .5, cy: .41 });
   await page.evaluate(cfg => window.init(cfg), {
-    name: c.label || c.name, type: c.type, face: f,
+    name: c.label || c.name, type: c.type, face: f, style: opt('--style') || c.style || 'gold',
     gfx: durl(path.join(ROOT, 'assets/gfx', c.name + '.webp')),
     icon: durl(path.join(ROOT, 'assets/icons', c.type + '.png')),
     badge: durl(path.join(ROOT, 'assets/icons/SSR_badge.png')),
@@ -23,7 +23,7 @@ async function renderCard(page, c) {
     fs.mkdirSync(path.join(OUT, 'preview'), { recursive: true });
     for (const F of PREVIEW.split(',').map(Number)) {
       const b64 = await page.evaluate(F => { render(F / 30); return document.getElementById('c').toDataURL('image/png').split(',')[1]; }, F);
-      fs.writeFileSync(path.join(OUT, 'preview', `${c.name}_${String(F).padStart(3, '0')}.png`), Buffer.from(b64, 'base64'));
+      fs.writeFileSync(path.join(OUT, 'preview', `${c.name}_${opt('--style') || ''}_${String(F).padStart(3, '0')}.png`), Buffer.from(b64, 'base64'));
     }
     return;
   }

@@ -2,6 +2,9 @@
 <html><head><meta charset="utf-8">
 <style>
 @font-face{font-family:Baloo;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2);font-weight:800}
+@font-face{font-family:Exo2;src:url(node_modules/@fontsource/exo-2/files/exo-2-latin-900-italic.woff2);font-weight:900;font-style:italic}
+@font-face{font-family:Saira;src:url(node_modules/@fontsource/saira/files/saira-latin-900-italic.woff2);font-weight:900;font-style:italic}
+@font-face{font-family:Russo;src:url(node_modules/@fontsource/russo-one/files/russo-one-latin-400-normal.woff2);font-weight:400}
 @font-face{font-family:MRound;src:url(node_modules/@fontsource/m-plus-rounded-1c/files/m-plus-rounded-1c-latin-900-normal.woff2);font-weight:900}
 html,body{margin:0;background:#000}
 canvas{display:block}
@@ -11,7 +14,7 @@ canvas{display:block}
 // ===== Umamusume SSR support-card reveal — reconstructed frame by frame =====
 // Reference timing is in original 30 fps frames: F = t*30 (F=0 is frame 1).
 const W = 1080, H = 1920, U = W / 472;           // U: px per original-video unit
-const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const cv = document.getElementById('c'); let ctx = cv.getContext('2d');
 const REVEAL_END = 134;                           // last original frame
 const OUTRO = 46;                                 // extra frames: settle into card
 window.TOTAL_F = REVEAL_END + OUTRO;
@@ -168,6 +171,77 @@ function buildLayers() {
   S.gridSpark = Array.from({ length: 34 }, (_, i) => ({ x: (.1 + R3() * .85) * W, y: ay + (.12 + R3() * .72) * ah, r: (16 + R3() * 18) * U, d: R3() * 5 }));
 }
 
+
+// ---------- name styles ----------
+const NAME_STYLES = {
+  cute:   { font: '800 {s}px Baloo', skew: -.16, upper: false },
+  chrome: { font: 'italic 900 {s}px Exo2', skew: -.06, upper: true, track: .02 },
+  gold:   { font: 'italic 900 {s}px Saira', skew: -.06, upper: true, track: .03 },
+  holo:   { font: '400 {s}px Russo', skew: -.2, upper: true, track: .03 },
+};
+function nameText() { const st = NAME_STYLES[S.style]; return st.upper ? S.name.toLocaleUpperCase('es') : S.name; }
+// draws the name with its left edge (align 'left') or centre (align 'center') at (0,y) of the current transform
+let NL = null;
+function drawName(size, maxW, y, align, wash = 0, shine = -1) {
+  if (!NL) NL = mk(W, H);
+  const main = ctx, m = ctx.getTransform(), alpha = ctx.globalAlpha;
+  const nl = NL.getContext('2d'); nl.setTransform(1, 0, 0, 1, 0, 0); nl.clearRect(0, 0, W, H); nl.setTransform(m);
+  ctx = nl;
+  try { return drawNameInner(size, maxW, y, align, wash, shine); }
+  finally { ctx = main; ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha; ctx.drawImage(NL, 0, 0); ctx.restore(); }
+}
+function drawNameInner(size, maxW, y, align, wash, shine) {
+  const st = NAME_STYLES[S.style], txt = nameText();
+  const setF = sz => { ctx.font = st.font.replace('{s}', sz); ctx.letterSpacing = ((st.track || 0) * sz) + 'px'; };
+  setF(size); let tw = ctx.measureText(txt).width;
+  if (tw > maxW) { size *= maxW / tw; setF(size); tw = maxW; }
+  ctx.save(); ctx.transform(1, 0, st.skew, 1, 0, 0); ctx.lineJoin = 'round'; ctx.textAlign = 'left';
+  const x = align === 'center' ? -tw / 2 : 0;
+  const top = y - size * .78, bot = y + size * .05;
+  if (S.style === 'cute') {
+    ctx.shadowColor = 'rgba(160,110,255,.55)'; ctx.shadowBlur = 14 * U; ctx.lineWidth = 9 * U; ctx.strokeStyle = '#fff';
+    ctx.strokeText(txt, x, y); ctx.shadowBlur = 0;
+    ctx.lineWidth = 2.2 * U; ctx.strokeStyle = 'rgba(190,150,255,.9)'; ctx.strokeText(txt, x, y);
+    const g = ctx.createLinearGradient(x, 0, x + tw, 0);
+    g.addColorStop(0, '#ff47cf'); g.addColorStop(.38, '#c25cff'); g.addColorStop(.62, '#4ec9ff'); g.addColorStop(1, '#6ef08e');
+    ctx.fillStyle = g; ctx.fillText(txt, x, y);
+  } else {
+    const pal = {
+      chrome: { out: '#ffffff', ink: '#160f3a', glow: 'rgba(90,140,255,.75)',
+        fill: [[0, '#ffffff'], [.42, '#d9ecff'], [.5, '#5d6cff'], [.62, '#2b2f8f'], [.8, '#8fd2ff'], [1, '#f2fbff']] },
+      gold:   { out: '#fffbe8', ink: '#3a1704', glow: 'rgba(255,170,40,.7)',
+        fill: [[0, '#fffbe0'], [.4, '#ffd84a'], [.52, '#b8640c'], [.66, '#ffb21e'], [1, '#fff3a8']] },
+      holo:   { out: '#ffffff', ink: '#1d0f45', glow: 'rgba(200,90,255,.75)', holo: true,
+        fill: [[0, '#ffffff'], [.45, '#f1e6ff'], [.55, '#b98bff'], [1, '#ffffff']] },
+    }[S.style];
+    // outer glow + white rim
+    ctx.shadowColor = pal.glow; ctx.shadowBlur = 22 * U; ctx.lineWidth = 15 * U; ctx.strokeStyle = pal.out; ctx.strokeText(txt, x, y);
+    ctx.shadowBlur = 0; ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowOffsetY = 4 * U; ctx.shadowBlur = 6 * U;
+    ctx.strokeText(txt, x, y); ctx.shadowColor = 'transparent';
+    // dark ink outline
+    ctx.lineWidth = 7 * U; ctx.strokeStyle = pal.ink; ctx.strokeText(txt, x, y);
+    // metallic fill
+    const g = ctx.createLinearGradient(0, top, 0, bot); pal.fill.forEach(([o, c]) => g.addColorStop(o, c));
+    ctx.fillStyle = g; ctx.fillText(txt, x, y);
+    if (pal.holo && false) {   // iridescent sweep over the letters
+      ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+      const hg = ctx.createLinearGradient(x, top, x + tw, bot);
+      ['#ff5fd2', '#ffd36b', '#7cf2a0', '#5fd0ff', '#a07bff', '#ff5fd2'].forEach((c, i, a) => hg.addColorStop(i / (a.length - 1), c));
+      ctx.globalAlpha *= .55; ctx.fillStyle = hg; ctx.fillRect(x - 20, top - 20, tw + 40, bot - top + 40); ctx.restore();
+    }
+  }
+  // moving specular glint
+  if (shine >= 0 && shine <= 1) {
+    ctx.save(); ctx.globalCompositeOperation = 'source-atop';
+    const sx = x - tw * .3 + shine * tw * 1.6, sg = ctx.createLinearGradient(sx - 60 * U, 0, sx + 60 * U, 0);
+    sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(.5, 'rgba(255,255,255,.9)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sg; ctx.fillRect(x - 40, top - 40, tw + 80, bot - top + 80); ctx.restore();
+  }
+  if (wash > 0) { ctx.globalAlpha *= wash * .85; ctx.fillStyle = '#fff'; ctx.fillText(txt, x, y); }
+  ctx.restore();
+  return size;
+}
+
 // ---------- text ----------
 function textBlock(F, alphaAll = 1) {
   const [ax, ay, aw, ah] = artRect();
@@ -194,20 +268,8 @@ function textBlock(F, alphaAll = 1) {
   // name
   const p2 = seg(F, 86, 90);
   if (p2 > 0) {
-    let size = 66 * U; ctx.font = `800 ${size}px Baloo`;
-    let tw = ctx.measureText(S.name).width; const maxW = 420 * U;
-    if (tw > maxW) { size *= maxW / tw; ctx.font = `800 ${size}px Baloo`; tw = maxW; }
-    const y = 56 * U;
-    ctx.save(); ctx.globalAlpha *= eOut(p2); ctx.translate(14 * U + 30 * U * (1 - eOut(p2)), 0); ctx.transform(1, 0, -.16, 1, 0, 0);
-    ctx.lineJoin = 'round';
-    ctx.shadowColor = 'rgba(160,110,255,.55)'; ctx.shadowBlur = 14 * U; ctx.lineWidth = 9 * U; ctx.strokeStyle = '#fff';
-    ctx.strokeText(S.name, 0, y); ctx.shadowBlur = 0;
-    ctx.lineWidth = 2.2 * U; ctx.strokeStyle = 'rgba(190,150,255,.9)'; ctx.strokeText(S.name, 0, y);
-    const g = ctx.createLinearGradient(0, 0, tw, 0);
-    g.addColorStop(0, '#ff47cf'); g.addColorStop(.38, '#c25cff'); g.addColorStop(.62, '#4ec9ff'); g.addColorStop(1, '#6ef08e');
-    ctx.fillStyle = g; ctx.fillText(S.name, 0, y);
-    const wash = 1 - seg(F, 88, 95);                     // enters white, then colours up
-    if (wash > 0) { ctx.globalAlpha *= wash * .85; ctx.fillStyle = '#fff'; ctx.fillText(S.name, 0, y); }
+    ctx.save(); ctx.globalAlpha *= eOut(p2); ctx.translate(14 * U + 30 * U * (1 - eOut(p2)), 0);
+    drawName(66 * U, 420 * U, 56 * U, 'left', 1 - seg(F, 88, 95), seg(F, 96, 106));
     ctx.restore();
   }
   ctx.restore();
@@ -408,13 +470,8 @@ function cardFrame(F) {
   const pn = eOut(seg(F, REVEAL_END + 12, REVEAL_END + 22));
   if (pn > 0) {
     ctx.save(); ctx.globalAlpha = pn; ctx.translate(W / 2, y + h + 70 * U + 20 * U * (1 - pn));
-    let size = 60 * U; ctx.font = `800 ${size}px Baloo`; let tw = ctx.measureText(S.name).width;
-    if (tw > W * .86) { size *= W * .86 / tw; ctx.font = `800 ${size}px Baloo`; tw = W * .86; }
-    ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.transform(1, 0, -.12, 1, 0, 0);
-    ctx.shadowColor = 'rgba(160,110,255,.55)'; ctx.shadowBlur = 14 * U; ctx.lineWidth = 9 * U; ctx.strokeStyle = '#fff'; ctx.strokeText(S.name, 0, 0); ctx.shadowBlur = 0;
-    const g = ctx.createLinearGradient(-tw / 2, 0, tw / 2, 0);
-    g.addColorStop(0, '#ff47cf'); g.addColorStop(.38, '#c25cff'); g.addColorStop(.62, '#4ec9ff'); g.addColorStop(1, '#6ef08e');
-    ctx.fillStyle = g; ctx.fillText(S.name, 0, 0); ctx.restore();
+    drawName(62 * U, W * .86, 0, 'center', 0, seg(F, REVEAL_END + 22, REVEAL_END + 34));
+    ctx.restore();
   }
   // fade out reveal-screen text as the card forms
   if (p < 1) { textBlock(REVEAL_END, 1 - p); newTag(REVEAL_END, 1 - p); }
@@ -466,9 +523,9 @@ window.render = function (t) {
 };
 
 window.init = async function (cfg) {
-  S = { name: cfg.name, type: cfg.type, face: cfg.face };
+  S = { name: cfg.name, type: cfg.type, face: cfg.face, style: cfg.style || 'gold' };
   [S.img, S.icon, S.badge] = await Promise.all([loadImg(cfg.gfx), loadImg(cfg.icon), loadImg(cfg.badge)]);
-  await document.fonts.load(`800 40px Baloo`);
+  await Promise.all(['800 40px Baloo', 'italic 900 40px Exo2', 'italic 900 40px Saira', '400 40px Russo'].map(f => document.fonts.load(f)));
   buildLayers();
   const [ax, ay, aw, ah] = artRect();
   S.b1 = burst(101, 26, W * .62, H * .45, 160, { ang: -.3, arc: 2.6, r0: 9, r1: 14, life: 16, jx: 200, jy: 500 });
