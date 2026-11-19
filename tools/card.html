@@ -523,7 +523,7 @@ window.render = function (t) {
 };
 
 window.init = async function (cfg) {
-  S = { name: cfg.name, type: cfg.type, face: cfg.face, style: cfg.style || 'gold' };
+  S = { name: cfg.name, type: cfg.type, face: cfg.face, style: cfg.style || 'cute' };
   [S.img, S.icon, S.badge] = await Promise.all([loadImg(cfg.gfx), loadImg(cfg.icon), loadImg(cfg.badge)]);
   await Promise.all(['800 40px Baloo', 'italic 900 40px Exo2', 'italic 900 40px Saira', '400 40px Russo'].map(f => document.fonts.load(f)));
   buildLayers();

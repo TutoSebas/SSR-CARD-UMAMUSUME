@@ -13,7 +13,7 @@ const durl = p => 'data:image/' + (p.endsWith('.png') ? 'png' : 'webp') + ';base
 async function renderCard(page, c) {
   const f = c.face || (faces[c.name] && faces[c.name].score > .75 ? faces[c.name] : { cx: .5, cy: .41 });
   await page.evaluate(cfg => window.init(cfg), {
-    name: c.label || c.name, type: c.type, face: f, style: opt('--style') || c.style || 'gold',
+    name: c.label || c.name, type: c.type, face: f, style: opt('--style') || c.style || 'cute',
     gfx: durl(path.join(ROOT, 'assets/gfx', c.name + '.webp')),
     icon: durl(path.join(ROOT, 'assets/icons', c.type + '.png')),
     badge: durl(path.join(ROOT, 'assets/icons/SSR_badge.png')),
